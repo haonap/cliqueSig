@@ -87,7 +87,7 @@ void GSIP_F2(int tau){
         //1-feasible sols quickly;2-prove optimality;3-focus on MIP bound; default is 0
 
         //set threads; review guidance on Gurobi.com; 0-default;
-        model.set(GRB_IntParam_Threads,0);
+        model.set(GRB_IntParam_Threads,1);
 
         //set root node LPR solver
         model.set(GRB_IntParam_Method,-1);
@@ -100,6 +100,7 @@ void GSIP_F2(int tau){
         //set global cut aggressiveness; over-ridden by individual cut settings
         model.set(GRB_IntParam_Cuts,-1);
         //0=no cuts;1=moderate;2=aggressive;3=very aggressive;-1=default
+        //model.set(GRB_IntParam_RLTCuts, 0);
 
         //set maximum time limit
         model.set(GRB_DoubleParam_TimeLimit,7200);
@@ -131,6 +132,11 @@ void GSIP_F2(int tau){
         //output results
         if((int)model.get(GRB_IntAttr_SolCount) == 0){
             cout << "\nNo solution found, Gurobi optimization status: " << model.get(GRB_IntAttr_Status) << endl;
+
+//            fstream fout("./graphSequences/" + seqName + "/results.txt", fstream::out);
+//            fout << "No solution found, Gurobi optimization status: " << model.get(GRB_IntAttr_Status) << endl;
+//            fout << "Processing time: " <<  fixed << setprecision(2) << (get_wall_time() - st) << " sec" << endl;
+//            fout.close();
         }else{
             cout << "\nBest clique signature found: ";
             int count = 0;
@@ -142,8 +148,48 @@ void GSIP_F2(int tau){
             }
             cout << endl;
             cout << "Clique signature size: " << count << endl;
+            cout << "Best window: ";
+            if(count != 0){
+                for(int t = 0; t < graphSeq.size(); t++){
+                    if(zvar[t].get(GRB_DoubleAttr_X) > 0.5){
+                        cout << t + 1 << " (";
+                        for(int i = t; i < t + tau; i++){
+                            cout << "G" << i + 1;
+                            if(i != t + tau -1){
+                                cout << " ";
+                            }
+                        }
+                        cout << ")" << endl;
+                        break;
+                    }
+                }
+            }else{
+                cout << endl;
+            }
+
             cout << "MIP gap: " << model.get(GRB_DoubleAttr_MIPGap) << endl;
             cout << "Best bound: " << model.get(GRB_DoubleAttr_ObjBound) << endl;
+
+//            fstream fout("./graphSequences/" + seqName + "/results.txt", fstream::out);
+//            fout << "Best clique signature found: ";
+//            for(int i = 0; i < graphSeq[0].n; i++){
+//                if(xvar[i].get(GRB_DoubleAttr_X) > 0.5){
+//                    fout << i + 1 << " ";
+//                }
+//            }
+//            fout << endl;
+//            fout << "Windows: ";
+//            for(int t = 0; t < graphSeq.size(); t++){
+//                if(zvar[t].get(GRB_DoubleAttr_X) > 0.5){
+//                    fout << t + 1 << " ";
+//                }
+//            }
+//            fout << endl;
+//            fout << "Clique signature size: " << count << endl;
+//            fout << "MIP gap: " << model.get(GRB_DoubleAttr_MIPGap) << endl;
+//            fout << "Best bound: " << model.get(GRB_DoubleAttr_ObjBound) << endl;
+//            fout << "Processing time: " << "Processing time: " <<  fixed << setprecision(2) << (get_wall_time() - st) << " sec" << endl;
+//            fout.close();
         }
 
     }catch (GRBException e){
@@ -162,16 +208,24 @@ void MW(int tau){
     cout << "\nMW..." << endl;
     cout << "Find " << tau << "-persistent clique signature " << "T = " << graphs.size() << ", tau = " << tau << "..." << endl;
     vector<int> bestClique;
+    vector<int> flagOptimal(T - tau + 1, 1);
     bestClique.clear();
     int peel = 0;
     int bestWindow = 0;
 
     for(int i = 0; i < T - tau + 1; i++){
         cout << "\nIn window " << i+1 << "..." << endl;
-        vector<int> pClique = GetPersistentCliqueWindow(i, tau, &peel);
+        vector<int> pClique = GetPersistentCliqueWindow(i, tau, &peel, &flagOptimal);
         if(bestClique.size() < pClique.size()){
             bestClique = pClique;
             bestWindow = i;
+        }
+        if(i > 0){
+            if(flagOptimal[i] == 0){
+                if(flagOptimal[i - 1] == 0){
+                    break;
+                }
+            }
         }
     }
 
@@ -181,20 +235,25 @@ void MW(int tau){
     }
     cout << endl;
     cout << "Clique size: " << bestClique.size() << endl;
-    cout << "Best window: " << bestWindow + 1 << " (";
-    for(int i = bestWindow; i < bestWindow + tau; i++){
-        cout << "G" << i + 1;
-        if(i < bestWindow + tau - 1){
-            cout << " ";
+    if((int)bestClique.size() == 0){
+        cout << "Best window: " << endl;
+    }else{
+        cout << "Best window: " << bestWindow + 1 << " (";
+        for(int i = bestWindow; i < bestWindow + tau; i++){
+            cout << "G" << i + 1;
+            if(i < bestWindow + tau - 1){
+                cout << " ";
+            }
         }
+        cout << ")" << endl;
     }
-    cout << ")" << endl;
     cout << "Processing time: " <<  fixed << setprecision(2) << (get_wall_time() - st) << " sec" << endl;
 }
 
 
-vector<int> GetPersistentCliqueWindow(int windowHead, int tau, int* peelP){
+vector<int> GetPersistentCliqueWindow(int windowHead, int tau, int* peelP, vector<int>* flagOptimalP){
     vector<int> bestClique;
+    int upperBound = graphSeq[windowHead].n + 1;
 
     //create an intersection graph
     graph pGraph = GetIntersectionGraph(windowHead, tau);
@@ -286,7 +345,7 @@ vector<int> GetPersistentCliqueWindow(int windowHead, int tau, int* peelP){
             //0=primal simplex, 1=dual simplex, 2=barrier
 
             //set global cut aggressiveness; over-ridden by individual cut settings
-            model.set(GRB_IntParam_Cuts,-1);
+            model.set(GRB_IntParam_Cuts,0);
             //0=no cuts;1=moderate;2=aggressive;3=very aggressive;-1=default
 
             //set maximum time limit
@@ -323,22 +382,33 @@ vector<int> GetPersistentCliqueWindow(int windowHead, int tau, int* peelP){
                         bestClique.push_back(nodes[i]);
                     }
                 }
+                upperBound = model.get(GRB_DoubleAttr_ObjBound);
             }
+
         }catch (GRBException e){
             cout << "Error code = " << e.getErrorCode() << endl;
             cout << e.getMessage() << endl;
         }catch(...){
             cout << "Exception during optimization" << endl;
         }
+    }else{
+        upperBound = heuClique.size();
     }
+
     if(heuClique.size() > bestClique.size()){
         if(*peelP < heuClique.size()){
             *peelP = (int)heuClique.size();
+        }
+        if(upperBound - heuClique.size() >= 1){
+            (*flagOptimalP)[windowHead] = 0;
         }
         return heuClique;
     }else{
         if(*peelP < bestClique.size()){
             *peelP = (int)bestClique.size();
+        }
+        if(upperBound - bestClique.size() >= 1){
+            (*flagOptimalP)[windowHead] = 0;
         }
         return bestClique;
     }

@@ -37,7 +37,7 @@ using namespace std;
 void ReadIn(string);
 void GSIP_F2(int);
 void MW(int);
-vector<int> GetPersistentCliqueWindow(int, int, int*);
+vector<int> GetPersistentCliqueWindow(int, int, int*, vector<int>*);
 graph GetIntersectionGraph(int, int);
 vector<int> GetHeuristicClique(graph*);
 void CorePeel(graph*, int*);

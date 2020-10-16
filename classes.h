@@ -5,7 +5,7 @@
 #ifndef CLIQUESIG_CLASSES_H
 #define CLIQUESIG_CLASSES_H
 
-
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -15,7 +15,7 @@ using namespace std;
 class node{
 public:
     int name;
-    int degree = 0;
+    int degree;
     vector<int> neighbors;
     vector<int> adjacency; // used in CommunityPeel
     vector<int> F; // used in CommunityPeel

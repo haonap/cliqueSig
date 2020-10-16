@@ -1,0 +1,6 @@
+Best clique signature found: 3 18 51 52 55 
+Windows: 3 4 5 
+Clique signature size: 5
+MIP gap: 0
+Best bound: 5
+Processing time: Processing time: 19.97 sec
