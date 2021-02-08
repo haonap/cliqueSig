@@ -42,6 +42,7 @@ graph::graph(string nameG){
 }
 
 
+// get k-core of a graph
 void graph::GetKCore(int k){
     queue<int> Q;
     vector<int> F, D;
@@ -85,6 +86,7 @@ void graph::GetKCore(int k){
 }
 
 
+// check if u is adjacent to v
 bool graph::IsAdj(int u, int v){
     if(binary_search(nodeList[u].neighbors.begin(), nodeList[u].neighbors.end(), v)){
         return 1;
@@ -94,6 +96,7 @@ bool graph::IsAdj(int u, int v){
 }
 
 
+// find common neighbors of u and v
 vector<int> graph::FindCommonNeighbors(int u, int v){
     vector<int> comNeighbors;
     int i = 0, j = 0;
@@ -112,6 +115,7 @@ vector<int> graph::FindCommonNeighbors(int u, int v){
 }
 
 
+// find all vertices connected to a vertex
 vector<int> graph::BFS(int s){
     vector<int> tempVec;
     vector<int> distance(n, n);
